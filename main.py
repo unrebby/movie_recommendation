@@ -124,12 +124,13 @@ def send_welcome(message: telebot.types.Message) -> None:
 def send_welcome(message: telebot.types.Message) -> None:
     if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
         arguments = message.text.split(" ")
-        actor_ = arguments[1] + ' ' + arguments[2]
 
         if len(arguments) < 3:
             bot.send_message(message.chat.id, "Укажите актёра")
 
+
         elif arguments[1].isalpha():
+            actor_ = arguments[1] + ' ' + arguments[2]
             bot.send_message(message.chat.id, "Ищу...")
             query: peewee.ModelSelect = actors.select().where(
                 actors.actor == actor_ #arguments[1]
@@ -152,20 +153,66 @@ def send_welcome(message: telebot.types.Message) -> None:
     else:
         bot.send_message(message.chat.id, "Нажми /start, чтобы зарегестрироваться!")
 
-
-@bot.message_handler(commands=["add"])
+@bot.message_handler(commands=["info"])
 def send_welcome(message: telebot.types.Message) -> None:
     if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
         arguments = message.text.split(" ")
-        film_ = ''
-        for i in range(1, len(arguments) - 1):
-            film_ += str(arguments[i]) + ' '
-        film_ += arguments[len(arguments) - 1]
 
         if len(arguments) < 2:
             bot.send_message(message.chat.id, "Укажите название фильма.")
 
         elif arguments[1].isalnum():
+            film_ = ''
+            for i in range(1, len(arguments) - 1):
+                film_ += str(arguments[i]) + ' '
+            film_ += arguments[len(arguments) - 1]
+
+            bot.send_message(message.chat.id, "Ищу...")
+
+            query: peewee.ModelSelect = films.select().where(
+                films.name == film_
+            )
+
+            if query:
+                reply = f"Вот информация о фильме {film_}:\n"
+                for row in query:
+                    reply += 'Режиссёр: '
+                    reply += f"{row.director}\n"
+                    reply += 'Год выпуска: '
+                    reply += f"{row.year}\n"
+                    reply += 'Язык оригинала: '
+                    reply += f"{row.language}\n"
+                    reply += 'Продолжительность в минутах: '
+                    reply += f"{row.duration}\n"
+                    reply += 'Жанр: '
+                    reply += f"{row.genre}\n"
+
+                bot.send_message(message.chat.id, reply)
+
+            else:
+                bot.send_message(message.chat.id, "Не найдено фильмов с таким названием")
+
+        else:
+            bot.send_message(message.chat.id, "Некорректно указан фильм!")
+
+    else:
+        bot.send_message(message.chat.id, "Нажми /start, чтобы зарегестрироваться!")
+
+
+@bot.message_handler(commands=["add"])
+def send_welcome(message: telebot.types.Message) -> None:
+    if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+        arguments = message.text.split(" ")
+
+        if len(arguments) < 2:
+            bot.send_message(message.chat.id, "Укажите название фильма.")
+
+        elif arguments[1].isalnum():
+            film_ = ''
+            for i in range(1, len(arguments) - 1):
+                film_ += str(arguments[i]) + ' '
+            film_ += arguments[len(arguments) - 1]
+
             if (
                 wish_list.select()
                 .where(
@@ -195,17 +242,17 @@ def send_welcome(message: telebot.types.Message) -> None:
 def send_welcome(message: telebot.types.Message) -> None:
     if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
         arguments = message.text.split(" ")
-        film_ = ''
-        for i in range(1, len(arguments) - 2):
-            film_ += str(arguments[i]) + ' '
-        film_ += arguments[len(arguments) - 2]
-
-        score_ = float(arguments[len(arguments) - 1])
 
         if len(arguments) < 3:
             bot.send_message(message.chat.id, "Некорректный ввод.")
 
         elif arguments[1].isalnum():
+            film_ = ''
+            for i in range(1, len(arguments) - 2):
+                film_ += str(arguments[i]) + ' '
+            film_ += arguments[len(arguments) - 2]
+            score_ = float(arguments[len(arguments) - 1])
+
             films.update(
                 {
                     films.rating: (films.rating + score_),
@@ -225,12 +272,12 @@ def send_welcome(message: telebot.types.Message) -> None:
 def send_welcome(message: telebot.types.Message) -> None:
     if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
         arguments = message.text.split(" ")
-        director_ = arguments[1] + ' ' + arguments[2]
 
         if len(arguments) < 3:
             bot.send_message(message.chat.id, "Укажите режиссёра")
 
         elif arguments[1].isalpha():
+            director_ = arguments[1] + ' ' + arguments[2]
 
             bot.send_message(message.chat.id, "Ищу")
             query: peewee.ModelSelect = films.select().where(
@@ -273,7 +320,8 @@ def send_welcome(message: telebot.types.Message) -> None:
             bot.send_message(message.chat.id, reply)
 
         else:
-            bot.send_message(message.chat.id, "Вам список избранных фильмов пуст!")
+            bot.send_message(message.chat.id, "Ваш список избранных фильмов пуст!")
+
 
 
 @bot.message_handler(commands=["genre"])
@@ -316,7 +364,7 @@ def send_welcome(message: telebot.types.Message) -> None:
             reply = "Топ-5 фильмов с лучшим рейтингом:\n"
 
             for row in query:
-                reply += f'"{row.name}" - {row.rating}\n'
+                reply += f'"{row.name}" - {row.rating / row.counter}\n'
 
             bot.send_message(message.chat.id, reply)
 
