@@ -377,7 +377,7 @@ def send_welcome(message: telebot.types.Message) -> None:
             reply = "Фильмы, которые у нас есть:\n"
 
             for row in query:
-                reply += f'"{row.name}" - {row.rating / row.counter} - "{row.genre}"\n'
+                reply += f'"{row.name}" - {row.rating / row.counter} - {row.genre}\n'
 
             bot.send_message(message.chat.id, reply)
 
