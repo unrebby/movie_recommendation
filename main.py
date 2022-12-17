@@ -368,6 +368,19 @@ def send_welcome(message: telebot.types.Message) -> None:
 
             bot.send_message(message.chat.id, reply)
 
+@bot.message_handler(commands=["all"])
+def send_welcome(message: telebot.types.Message) -> None:
+    if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+        query = films.select().order_by((films.rating / films.counter).desc())
+
+        if query:
+            reply = "Фильмы, которые у нас есть:\n"
+
+            for row in query:
+                reply += f'"{row.name}" - {row.rating / row.counter} - "{row.genre}"\n'
+
+            bot.send_message(message.chat.id, reply)
+
 
 @bot.message_handler(func=lambda message: True)
 def echo_message(message: telebot.types.Message) -> None:
