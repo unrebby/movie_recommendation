@@ -51,6 +51,9 @@ class wish_list(BaseModel):
     telegram_id = peewee.ForeignKeyField(
         bot_users, to_field="telegram_id", on_delete="CASCADE"
     )
+    list_name = peewee.TextField(null=False)
+    list_rating = peewee.FloatField(null=True)
+    raiting_counter = peewee.IntegerField(null=True)
 
     class Meta:
         database = db

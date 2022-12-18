@@ -208,27 +208,49 @@ def send_welcome(message: telebot.types.Message) -> None:
             bot.send_message(message.chat.id, "Укажите название фильма.")
 
         elif arguments[1].isalnum():
-            film_ = ''
-            for i in range(1, len(arguments) - 1):
-                film_ += str(arguments[i]) + ' '
-            film_ += arguments[len(arguments) - 1]
+            count = 0
+            film_ = str(arguments[1])
+            list_ = ''
+            for i in range(2, len(arguments) - 1):
+                if count == 0:
+                    if arguments[i] == '-':
+                        count += 1
+                    else:
+                        film_ += ' ' + str(arguments[i])
+                else:
+                    list_ += str(arguments[i]) + ' '
+            list_ += arguments[len(arguments) - 1]
 
             if (
                 wish_list.select()
                 .where(
-                    wish_list.telegram_id == message.from_user.id, wish_list.film_name == film_
+                    wish_list.film_name == film_, wish_list.list_name == list_
                 )
                 .exists()
             ):
-                bot.send_message(message.chat.id, "Фильм уже в избранном")
+                bot.send_message(message.chat.id, "Фильм уже в подборке.")
 
             else:
+                query: peewee.ModelSelect = wish_list.select().where(
+                    wish_list.list_name == list_
+                )
+                rating_ = 10
+                counter_ = 1
+                if query:
+                    for row in query:
+                        rating_ = row.list_rating
+                        counter_ = row.raiting_counter
+                        break
                 wish_list.insert(
                     {
                         wish_list.telegram_id: message.from_user.id,
                         wish_list.film_name: film_,
+                        wish_list.list_name: list_,
+                        wish_list.list_rating: rating_,
+                        wish_list.raiting_counter: counter_,
                     }
                 ).execute()
+
                 bot.send_message(message.chat.id, "Фильм добавлен.")
 
         else:
@@ -260,6 +282,35 @@ def send_welcome(message: telebot.types.Message) -> None:
                 }
             ).where(films.name == film_).execute()
             bot.send_message(message.chat.id, "Фильм оценен.")
+
+        else:
+            bot.send_message(message.chat.id, "Некорректное название.")
+
+    else:
+        bot.send_message(message.chat.id, "Нажми /start, чтобы зарегестрироваться!")
+
+@bot.message_handler(commands=["rating_list"])
+def send_welcome(message: telebot.types.Message) -> None:
+    if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+        arguments = message.text.split(" ")
+
+        if len(arguments) < 3:
+            bot.send_message(message.chat.id, "Некорректный ввод.")
+
+        elif arguments[1].isalnum():
+            list_ = ''
+            for i in range(1, len(arguments) - 2):
+                list_ += str(arguments[i]) + ' '
+            list_ += arguments[len(arguments) - 2]
+            score_ = float(arguments[len(arguments) - 1])
+
+            wish_list.update(
+                {
+                    wish_list.list_rating: (wish_list.list_rating + score_),
+                    wish_list.raiting_counter: wish_list.raiting_counter + 1,
+                }
+            ).where(wish_list.list_name == list_).execute()
+            bot.send_message(message.chat.id, "Подборка оценена.")
 
         else:
             bot.send_message(message.chat.id, "Некорректное название.")
@@ -303,24 +354,62 @@ def send_welcome(message: telebot.types.Message) -> None:
         bot.send_message(message.chat.id, "Нажми /start, чтобы зарегестрироваться!")
 
 
-@bot.message_handler(commands=["favourite"])
+@bot.message_handler(commands=["list"])
 def send_welcome(message: telebot.types.Message) -> None:
     if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+        arguments = message.text.split(" ")
 
-        query: peewee.ModelSelect = wish_list.select().where(
-            wish_list.telegram_id == message.from_user.id
-        )
+        if len(arguments) < 2:
+            bot.send_message(message.chat.id, "Укажите название подборки")
 
-        if query:
-            reply = f"Вот список фильмов, которые у вас в избранном:\n"
-            for row in query:
-                print(row.film_name_id)
-                reply += f"{row.film_name_id}\n"
+        elif arguments[1].isalpha():
+            list_ = ''
+            for i in range(1, len(arguments) - 1):
+                list_ += str(arguments[i]) + ' '
+            list_ += arguments[len(arguments) - 1]
 
-            bot.send_message(message.chat.id, reply)
+            bot.send_message(message.chat.id, "Ищу")
+            query: peewee.ModelSelect = wish_list.select().where(
+                wish_list.list_name == list_
+            )
+
+            if query:
+                reply = f"Вот список фильмов, которые есть в подборке {list_}:\n"
+                for row in query:
+                    reply += f"{row.film_name_id}\n"
+
+                bot.send_message(message.chat.id, reply)
+
+            else:
+                bot.send_message(
+                    message.chat.id, "Не найдено подборки с таким именем"
+                )
 
         else:
-            bot.send_message(message.chat.id, "Ваш список избранных фильмов пуст!")
+            bot.send_message(message.chat.id, "Некорректно указано название подборки!")
+
+    else:
+        bot.send_message(message.chat.id, "Нажми /start, чтобы зарегестрироваться!")
+
+
+# @bot.message_handler(commands=["favourite"])
+# def send_welcome(message: telebot.types.Message) -> None:
+#     if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+
+#         query: peewee.ModelSelect = wish_list.select().where(
+#             wish_list.telegram_id == message.from_user.id
+#         )
+
+#         if query:
+#             reply = f"Вот список фильмов, которые у вас в избранном:\n"
+#             for row in query:
+#                 print(row.film_name_id)
+#                 reply += f"{row.film_name_id}\n"
+
+#             bot.send_message(message.chat.id, reply)
+
+#         else:
+#             bot.send_message(message.chat.id, "Ваш список избранных фильмов пуст!")
 
 
 
@@ -378,6 +467,19 @@ def send_welcome(message: telebot.types.Message) -> None:
 
             for row in query:
                 reply += f'"{row.name}" - {row.rating / row.counter} - {row.genre}\n'
+
+            bot.send_message(message.chat.id, reply)
+
+@bot.message_handler(commands=["lists"])
+def send_welcome(message: telebot.types.Message) -> None:
+    if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+        query = wish_list.select(wish_list.list_name, wish_list.list_rating, wish_list.raiting_counter).distinct()
+
+        if query:
+            reply = "Подборки, которые у нас есть:\n"
+
+            for row in query:
+                reply += f'"{row.list_name}" - {row.list_rating / row.raiting_counter}\n'
 
             bot.send_message(message.chat.id, reply)
 
