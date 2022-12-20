@@ -5,6 +5,8 @@ import os
 import peewee
 import telebot
 
+import matplotlib.pyplot as plt
+
 
 from captcha_generator import get_captcha
 from database.models import actors, bot_users, films, wish_list
@@ -391,6 +393,66 @@ def send_welcome(message: telebot.types.Message) -> None:
     else:
         bot.send_message(message.chat.id, "Нажми /start, чтобы зарегестрироваться!")
 
+def get_gchart(data):
+    count = {}
+    for element in data:
+        if count.get(element, None):
+            count[element] += 1
+        else:
+            count[element] = 1
+    max_num = sum(count.values())
+    values, labels = zip(*[
+        ('%d'%(100.0*num/max_num), label)
+        for label, num in count.items()
+    ])
+    return 'http://chart.googleapis.com/chart?' \
+    'cht=p3&chs=750x300&chd=t:%s&chl=%s&chco=0000ffff&chtt=Genre+statistics&chts=0000ffff,30' %(','.join(values), '|'.join(labels))
+
+
+@bot.message_handler(commands=["statistics_genre"])
+def send_welcome(message: telebot.types.Message) -> None:
+    if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+        arguments = message.text.split(" ")
+
+        if len(arguments) < 2:
+            bot.send_message(message.chat.id, "Укажите название подборки")
+
+        elif arguments[1].isalpha():
+            list_ = ''
+            for i in range(1, len(arguments) - 1):
+                list_ += str(arguments[i]) + ' '
+            list_ += arguments[len(arguments) - 1]
+
+            bot.send_message(message.chat.id, "Ищу")
+            query: peewee.ModelSelect = wish_list.select(wish_list.film_name).where(
+                wish_list.list_name == list_
+            )
+
+            query2: peewee.ModelSelect = films.select(films.genre).where(
+                films.name << query
+            )
+
+            if query:
+                reply = f"Вот соотношение жанров фильмов, которые есть в подборке {list_}:\n"
+
+                genre_ = []
+                for row in query2:
+                    genre_.append(str(row.genre))
+
+                bot.send_message(message.chat.id, reply)
+                bot.send_photo(message.chat.id, get_gchart(genre_))
+
+            else:
+                bot.send_message(
+                    message.chat.id, "Не найдено подборки с таким именем"
+                )
+
+        else:
+            bot.send_message(message.chat.id, "Некорректно указано название подборки!")
+
+    else:
+        bot.send_message(message.chat.id, "Нажми /start, чтобы зарегестрироваться!")
+
 
 # @bot.message_handler(commands=["favourite"])
 # def send_welcome(message: telebot.types.Message) -> None:
@@ -416,6 +478,13 @@ def send_welcome(message: telebot.types.Message) -> None:
 @bot.message_handler(commands=["genre"])
 def send_welcome(message: telebot.types.Message) -> None:
     if bot_users.select().where(bot_users.telegram_id == message.from_user.id).exists():
+
+        # mesg = bot.send_message(
+        #     message.chat.id, "Выберите жанр:", reply_markup=telebot.types.ReplyKeyboardRemove()
+        # )
+
+        # bot.register_next_step_handler(mesg, genre)
+
         arguments = message.text.split(" ")
         if len(arguments) < 2:
             bot.send_message(message.chat.id, "Укажите жанр")
